@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import moment from 'moment'
 import User from '#root/db/models/User'
-import { hasValues } from '#root/utils'
+import { hasValues, docToData } from '#root/utils'
 
 export default (app, { requiredAuth }) => {
     /*
@@ -50,7 +50,9 @@ export default (app, { requiredAuth }) => {
                 return res.sendFail('Password incorrect')
             }
             const token = generateToken({ id: user._id })
-            res.sendSuccess({ token })
+            const data = docToData(user)
+            delete data.password
+            res.sendSuccess({ token, ...data })
         } catch (err) {
             res.sendFail(err.message)
         }
@@ -63,8 +65,9 @@ export default (app, { requiredAuth }) => {
      */
     app.get('/api/user/info', requiredAuth, async (req, res) => {
         const user = req.user.toObject()
-        delete user.password
-        res.sendSuccess(user)
+        const data = docToData(user)
+        delete data.password
+        res.sendSuccess(data)
     })
 }
 
