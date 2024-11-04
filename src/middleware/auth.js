@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken'
-import moment from 'moment'
 import User from '#root/db/models/User'
 
 const getToken = req => {
@@ -14,11 +13,8 @@ export const auth = async (req, res, next) => {
     if (token) {
         try {
             // try to find user by token
-            const data = jwt.verify(token, process.env.JWT_SECRET)
-            if (moment().isAfter(data.expired)) {
-                throw new Error('abort')
-            }
-            const user = await User.findById(data.id)
+            const { id } = jwt.verify(token, process.env.JWT_SECRET)
+            const user = await User.findById(id)
             if (!user) {
                 throw new Error('abort')
             }

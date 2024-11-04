@@ -2,9 +2,11 @@ import 'dotenv/config'
 import path from 'path'
 import express from 'express'
 import expressListEndpoints from 'express-list-endpoints'
+import { Server } from 'socket.io'
 import colors from 'colors'
 import setMiddleware from '#root/middleware'
 import apiRoutes from '#root/api/route'
+import setWebSocket from '#root/api/ws'
 import { connectDatabase } from '#root/db/connect'
 
 /*
@@ -12,8 +14,7 @@ import { connectDatabase } from '#root/db/connect'
  */
 startServer()
 async function startServer() {
-    // config
-    const app = express()
+    // Config
     const dirname = import.meta.dirname // same as __dirname
     process.env.appRoot = dirname
     process.env.filesPath = path.join(dirname, '../files')
@@ -21,12 +22,21 @@ async function startServer() {
         console.log(colors.cyan(`[${type}]`), ...rest)
     }
 
+    // Set up server
     await connectDatabase()
+    const app = express()
     setMiddleware(app)
     setRoutes(app)
-    app.listen(process.env.PORT, () => {
+    const server = app.listen(process.env.PORT, () => {
         console.colorLog('App', `Server listen on http://localhost:${process.env.PORT}/`)
     })
+
+    const io = new Server(server, {
+        cors: {
+            origin: process.env.FRONTEND_URL,
+        },
+    })
+    setWebSocket(io)
 }
 
 /*

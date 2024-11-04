@@ -75,11 +75,5 @@ export default (app, { requiredAuth }) => {
  * Helper
  */
 const generateToken = data => {
-    return jwt.sign(
-        {
-            ...data,
-            expired: moment().add(30, 'days').unix() * 1000, // in seconds,
-        },
-        process.env.JWT_SECRET
-    )
+    return jwt.sign(data, process.env.JWT_SECRET, { expiresIn: '7d' })
 }
