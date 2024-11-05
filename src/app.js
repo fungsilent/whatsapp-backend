@@ -6,7 +6,7 @@ import { Server } from 'socket.io'
 import colors from 'colors'
 import setMiddleware from '#root/middleware'
 import apiRoutes from '#root/api/route'
-import setWebSocket from '#root/api/ws'
+import setWebSocket from '#root/api/socket'
 import { connectDatabase } from '#root/db/connect'
 
 /*
@@ -28,13 +28,15 @@ async function startServer() {
     setMiddleware(app)
     setRoutes(app)
     const server = app.listen(process.env.PORT, () => {
-        console.colorLog('App', `Server listen on http://localhost:${process.env.PORT}/`)
+        console.colorLog(
+            'App',
+            `Server listen on http://localhost:${process.env.PORT}/`
+        )
     })
 
     const io = new Server(server, {
-        cors: {
-            origin: process.env.FRONTEND_URL,
-        },
+        path: '/ws/',
+        transports: ['websocket'],
     })
     setWebSocket(io)
 }
