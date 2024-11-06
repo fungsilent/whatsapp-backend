@@ -11,6 +11,7 @@
         "#root/*": "./src/*"
     },
     "dependencies": {
+        "argon2": "^0.41.1",
         "bcryptjs": "^2.4.3",
         "body-parser": "^1.20.3",
         "colors": "^1.4.0",

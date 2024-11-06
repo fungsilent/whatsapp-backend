@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import bcrypt from 'bcryptjs'
+import argon2 from 'argon2'
 
 const UserSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -9,7 +9,7 @@ const UserSchema = new mongoose.Schema({
 
 UserSchema.pre('save', async function (next) {
     if (this.isModified('password')) {
-        this.password = await bcrypt.hash(this.password, process.env.PASSWORD_SALT)
+        this.password = await argon2.hash(this.password)
     }
     next()
 })

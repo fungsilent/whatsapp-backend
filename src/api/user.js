@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken'
-import bcrypt from 'bcryptjs'
-import moment from 'moment'
+import argon2 from 'argon2'
 import User from '#root/db/models/User'
 import { hasValues, docToData } from '#root/utils'
 
@@ -45,7 +44,7 @@ export default (app, { requiredAuth }) => {
             if (!user) {
                 return res.sendFail('Username not found')
             }
-            const isMatch = await bcrypt.compare(password, user.password)
+            const isMatch = await argon2.verify(user.password, password)
             if (!isMatch) {
                 return res.sendFail('Password incorrect')
             }
