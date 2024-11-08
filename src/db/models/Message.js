@@ -5,7 +5,10 @@ const MessageSchema = new mongoose.Schema({
     room: { type: mongoose.Types.ObjectId, ref: 'Group' },
     type: { type: String, enum: ['text', 'image', 'file', 'voice', 'code'], required: true },
     content: { type: String },
-    fileName: { type: String },
+    file: {
+        fileName: { type: String },
+        type: { type: String },
+    },
     createdAt: { type: Date, default: Date.now },
 })
 

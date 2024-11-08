@@ -6,7 +6,10 @@ const RoomSchema = new mongoose.Schema({
     member: [{ type: mongoose.Types.ObjectId, ref: 'User' }],
     lastMessage: { type: mongoose.Types.ObjectId, ref: 'Message' },
     name: { type: String },
-    icon: { type: String },
+    icon: {
+        fileName: { type: String },
+        type: { type: String },
+    },
     createdAt: { type: Date, default: Date.now },
 })
 

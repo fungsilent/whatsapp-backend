@@ -5,7 +5,10 @@ const UserSchema = new mongoose.Schema({
     name: { type: String, required: true },
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    icon: { type: String },
+    icon: {
+        fileName: { type: String },
+        type: { type: String },
+    },
     createdAt: { type: Date, default: Date.now },
 })
 

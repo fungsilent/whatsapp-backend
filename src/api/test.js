@@ -5,48 +5,66 @@ import User from '#root/db/models/User'
 export default app => {
     app.get('/api/insert', async (req, res) => {
         try {
-            const user1 = await User.findOne({ username: 'fung' })
-            const user2 = await User.findOne({ username: 'terry' })
+            const fung = await User.findOne({ username: 'fung' })
+            const terry = await User.findOne({ username: 'terry' })
+            const reze = await User.findOne({ username: 'Reze' })
             const { type } = req.query
             console.log('type', type)
             switch (type) {
-                case 'message': {
+                case 'group': {
+                    const room = await new Room({
+                        type: 'group',
+                        admin: [terry],
+                        member: [terry, fung, reze],
+                        lastMessage: null,
+                        name: 'JFSD',
+                        icon: {
+                            fileName: 'terry_icon.jpg',
+                            type: 'image/jpeg',
+                        },
+                    })
                     await new Message({
-                        userId: user1,
+                        user: terry,
+                        type: 'text',
+                        content: '遲10分鐘',
+                    }).save()
+                    await new Message({
+                        user: fung,
+                        type: 'text',
+                        content: '+1',
+                    }).save()
+                    const lastMessage = await new Message({
+                        user: reze,
+                        type: 'text',
+                        content: 'two',
+                    }).save()
+                    room.lastMessage = lastMessage
+                    await room.save()
+                    break
+                }
+                case 'friend': {
+                    const room = await new Room({
+                        type: 'user',
+                        member: [fung, terry],
+                        lastMessage: null,
+                    })
+                    await new Message({
+                        user: fung,
                         type: 'text',
                         content: 'Hi',
                     }).save()
                     await new Message({
-                        userId: user2,
+                        user: terry,
                         type: 'text',
-                        content: 'Hello',
+                        content: '早喎',
                     }).save()
-                    break
-                }
-                case 'group': {
-                    const group = await new Group({
-                        admin: [user2],
-                        userId: [user2, user1],
-                        name: 'JFSD',
-                        icon: 'something.jpg',
+                    const lastMessage = await new Message({
+                        user: terry,
+                        type: 'text',
+                        content: '我有野想問',
                     }).save()
-                    await new Friend({
-                        userId: user1,
-                        type: 'group',
-                        targetGroupId: group,
-                    }).save()
-                    await new Friend({
-                        userId: user2,
-                        type: 'group',
-                        targetGroupId: group,
-                    }).save()
-                    break
-                }
-                case 'friend': {
-                    await new Room({
-                        member: [user1, user2],
-                        type: 'user',
-                    }).save()
+                    room.lastMessage = lastMessage
+                    await room.save()
                     break
                 }
             }
