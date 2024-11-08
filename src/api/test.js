@@ -1,5 +1,4 @@
-import Friend from '#root/db/models/Friend'
-import Group from '#root/db/models/Group'
+import Room from '#root/db/models/Room'
 import Message from '#root/db/models/Message'
 import User from '#root/db/models/User'
 
@@ -44,15 +43,9 @@ export default app => {
                     break
                 }
                 case 'friend': {
-                    await new Friend({
-                        userId: user1,
+                    await new Room({
+                        member: [user1, user2],
                         type: 'user',
-                        targetUserId: user2,
-                    }).save()
-                    await new Friend({
-                        userId: user2,
-                        type: 'user',
-                        targetUserId: user1,
                     }).save()
                     break
                 }
