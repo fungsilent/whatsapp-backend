@@ -1,6 +1,7 @@
+import User from '#root/db/models/User'
 import Room from '#root/db/models/Room'
 import Message from '#root/db/models/Message'
-import User from '#root/db/models/User'
+import { hasValues, docToData } from '#root/utils'
 
 export default app => {
     app.get('/api/insert', async (req, res) => {
@@ -68,9 +69,31 @@ export default app => {
                     break
                 }
             }
-            res.sendSuccess()
+
+            const self = req.user
+            const rooms = await Room.find({
+                member: self,
+            })
+                .populate({
+                    path: 'lastMessage',
+                    // transform: doc => doc.content,
+                })
+                .populate({
+                    path: 'member',
+                    select: '-password -createdAt',
+                    // match: { _id: { $ne: req.user } },
+                    transform: doc => docToData(doc),
+                })
+                .sort({ 'lastMessage.createdAt': -1 })
+                .lean()
+            // https://mongoosejs.com/docs/tutorials/lean.html
+            // const friends = rooms.map(room => {
+            //     const
+            //     return room
+            // })
+            res.sendSuccess(rooms)
         } catch (err) {
-            res.sendFail()
+            res.sendFail(err.message)
         }
     })
 }

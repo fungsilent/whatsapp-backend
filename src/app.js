@@ -28,10 +28,7 @@ async function startServer() {
     setMiddleware(app)
     setRoutes(app)
     const server = app.listen(process.env.PORT, () => {
-        console.colorLog(
-            'App',
-            `Server listen on http://localhost:${process.env.PORT}/`
-        )
+        console.colorLog('App', `Server listen on http://localhost:${process.env.PORT}/`)
     })
 
     const io = new Server(server, {
@@ -54,7 +51,7 @@ const setRoutes = app => {
     app.get('/api', (req, res) => {
         const { endpoint } = req.query
         if (endpoint) {
-            const findApi = endpoints.find(ep => ep.path === endpoint)
+            const findApi = endpoints.filter(ep => ep.path.startsWith(endpoint))
             return res.json({
                 api: findApi || null,
             })
