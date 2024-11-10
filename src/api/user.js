@@ -21,7 +21,11 @@ export default (app, { requiredAuth }) => {
             if (user) {
                 return res.sendFail('Username has been used')
             }
-            const newUser = new User({ name, username, password })
+            const newUser = new User({
+                name,
+                username: username.toLowerCase(),
+                password,
+            })
             await newUser.save()
 
             const token = generateToken({ id: newUser._id })

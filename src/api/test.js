@@ -9,33 +9,26 @@ export default app => {
             const fung = await User.findOne({ username: 'fung' })
             const terry = await User.findOne({ username: 'terry' })
             const reze = await User.findOne({ username: 'Reze' })
-            const { type } = req.query
+            const { type, roomId } = req.query
             console.log('type', type)
             switch (type) {
-                case 'group': {
-                    const room = await new Room({
-                        type: 'group',
-                        admin: [terry],
-                        member: [terry, fung, reze],
-                        lastMessage: null,
-                        name: 'JFSD',
-                        icon: {
-                            fileName: 'terry_icon.jpg',
-                            type: 'image/jpeg',
-                        },
-                    })
+                case 'group-message': {
+                    const room = await Room.findById(roomId)
                     await new Message({
                         user: terry,
+                        room,
                         type: 'text',
                         content: '遲10分鐘',
                     }).save()
                     await new Message({
                         user: fung,
+                        room,
                         type: 'text',
                         content: '+1',
                     }).save()
                     const lastMessage = await new Message({
                         user: reze,
+                        room,
                         type: 'text',
                         content: 'two',
                     }).save()
@@ -43,55 +36,26 @@ export default app => {
                     await room.save()
                     break
                 }
-                case 'friend': {
-                    const room = await new Room({
-                        type: 'user',
-                        member: [fung, terry],
-                        lastMessage: null,
-                    })
+                case 'friend-message': {
+                    const room = await Room.findById(roomId)
                     await new Message({
                         user: fung,
+                        room,
                         type: 'text',
-                        content: 'Hi',
-                    }).save()
-                    await new Message({
-                        user: terry,
-                        type: 'text',
-                        content: '早喎',
+                        content: '9點開會',
                     }).save()
                     const lastMessage = await new Message({
                         user: terry,
+                        room,
                         type: 'text',
-                        content: '我有野想問',
+                        content: 'ok',
                     }).save()
                     room.lastMessage = lastMessage
                     await room.save()
                     break
                 }
             }
-
-            const self = req.user
-            const rooms = await Room.find({
-                member: self,
-            })
-                .populate({
-                    path: 'lastMessage',
-                    // transform: doc => doc.content,
-                })
-                .populate({
-                    path: 'member',
-                    select: '-password -createdAt',
-                    // match: { _id: { $ne: req.user } },
-                    transform: doc => docToData(doc),
-                })
-                .sort({ 'lastMessage.createdAt': -1 })
-                .lean()
-            // https://mongoosejs.com/docs/tutorials/lean.html
-            // const friends = rooms.map(room => {
-            //     const
-            //     return room
-            // })
-            res.sendSuccess(rooms)
+            res.sendSuccess()
         } catch (err) {
             res.sendFail(err.message)
         }
