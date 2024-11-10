@@ -49,19 +49,30 @@ export default (app, { requiredAuth }) => {
                 return res.sendFail('Password incorrect')
             }
             const token = generateToken({ id: user._id })
-            const data = docToData(user)
-            delete data.password
-            res.sendSuccess({ token, ...data })
+            res.sendSuccess({ token, ...responseUserInfo(user) })
         } catch (err) {
             res.sendFail(err.message)
         }
     })
 
-    app.post('app/user/update', async (req, res) => {
-        const { username, name, password, newPassword } = req.body
+    /*
+     * Update user info
+     * Method   PATCH
+     * Fung Lee
+     */
+    app.patch('/api/user/update', requiredAuth, async (req, res) => {
         try {
-            const user = await User.findOne({ username })
-            res.sendSuccess(user)
+            const self = req.user
+            // TODO: icon
+            const { name, password } = req.body
+            if (name) {
+                self.name = name
+            }
+            if (password) {
+                self.password = password
+            }
+            await self.save()
+            res.sendSuccess(responseUserInfo(self))
         } catch (err) {
             res.sendFail(err.message)
         }
@@ -73,10 +84,7 @@ export default (app, { requiredAuth }) => {
      * Fung Lee
      */
     app.get('/api/user/info', requiredAuth, async (req, res) => {
-        const user = req.user.toObject()
-        const data = docToData(user)
-        delete data.password
-        res.sendSuccess(data)
+        res.sendSuccess(responseUserInfo(req.user))
     })
 }
 
@@ -85,4 +93,11 @@ export default (app, { requiredAuth }) => {
  */
 const generateToken = data => {
     return jwt.sign(data, process.env.JWT_SECRET, { expiresIn: '7d' })
+}
+
+const responseUserInfo = user => {
+    const data = docToData(user)
+    delete data.password
+    delete data.createdAt
+    return data
 }
