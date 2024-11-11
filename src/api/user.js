@@ -29,7 +29,7 @@ export default (app, { requiredAuth }) => {
             await newUser.save()
 
             const token = generateToken({ id: newUser._id })
-            res.sendSuccess({ token })
+            res.sendSuccess({ token, ...responseUserInfo(newUser) })
         } catch (err) {
             console.log(err)
             res.sendFail('Sign up user failed')
