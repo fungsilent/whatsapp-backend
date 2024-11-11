@@ -14,7 +14,6 @@ export default (app, { requiredAuth }) => {
     app.get('/api/room/:roomId', requiredAuth, async (req, res) => {
         try {
             const { roomId } = req.params
-            const self = req.user
 
             const room = await Room.findById(roomId)
             if (!room) {

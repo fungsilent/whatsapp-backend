@@ -6,6 +6,7 @@ import Perspective from '#root/db/models/Perspective'
 import Message from '#root/db/models/Message'
 import { formatRoomInfo } from '#root/api/room'
 import { hasValues, docToData } from '#root/utils'
+import user from './user'
 
 export default (app, { requiredAuth }) => {
     // [Friend]----------------------------------------------------------------------
@@ -36,6 +37,11 @@ export default (app, { requiredAuth }) => {
         try {
             const { username } = req.body
             const self = req.user
+
+            if (username === self.username) {
+                return res.sendFail('Be friends with yourself?')
+            }
+
             const friend = await User.findOne({ username }, '-password')
             if (!friend) {
                 return res.sendFail('Friend not found')
@@ -63,11 +69,13 @@ export default (app, { requiredAuth }) => {
             new Perspective({
                 user: self,
                 room: newRoom,
+                type: newRoom.type,
                 lastReadMessage: null,
             }).save()
             new Perspective({
                 user: friend,
                 room: newRoom,
+                type: newRoom.type,
                 lastReadMessage: null,
             }).save()
 
@@ -104,22 +112,30 @@ export default (app, { requiredAuth }) => {
                 }
             }
 
+            const self = req.user
+
             /* friend */
-            const friends = await Room.find({
+            const friends = await Perspective.find({
+                user: self,
                 type: 'friend',
-                member: req.user,
             })
                 .populate({
-                    path: 'lastMessage',
-                })
-                .populate({
-                    path: 'member',
-                    select: '-password -createdAt',
-                    match: { _id: { $ne: req.user } },
+                    path: 'room',
+                    populate: [
+                        {
+                            path: 'member',
+                            match: { _id: { $ne: req.user } },
+                        },
+                        {
+                            path: 'lastMessage',
+                        },
+                    ],
                 })
                 .lean()
-            const friendList = friends.map(room => {
-                const friend = room.member?.[0]
+            const friendList = friends.map(doc => {
+                const room = doc.room
+                const friend = room.member.shift()
+
                 let lastMessage = null
                 if (room.lastMessage) {
                     lastMessage = {
@@ -139,25 +155,24 @@ export default (app, { requiredAuth }) => {
             })
 
             /* groups */
-            const groups = await Room.find({
+            const groups = await Perspective.find({
+                user: self,
                 type: 'group',
-                member: req.user,
-            }).populate({
-                path: 'lastMessage',
-                populate: {
-                    path: 'user',
-                    model: 'User',
-                },
             })
+                .populate({
+                    path: 'room',
+                    populate: 'lastMessage',
+                })
+                .lean()
+            const groupList = groups.map(doc => {
+                const room = doc.room
 
-            const groupList = groups.map(room => {
                 let lastMessage = null
                 if (room.lastMessage) {
                     lastMessage = {
                         type: room.lastMessage.type,
                         content: formatLastMessage(room.lastMessage),
                         date: room.lastMessage.createdAt,
-                        by: room.lastMessage.user.name,
                     }
                 }
 
@@ -172,7 +187,7 @@ export default (app, { requiredAuth }) => {
 
             const list = [...friendList, ...groupList].sort((a, b) => {
                 // descending
-                return moment(b.lastMessage?.date) - moment(a.lastMessage?.date)
+                return moment(b.lastMessage?.date).valueOf() - moment(a.lastMessage?.date).valueOf()
             })
             res.sendSuccess(list)
         } catch (err) {
@@ -217,6 +232,7 @@ export default (app, { requiredAuth }) => {
                     // TODO: make sure at least one admin exist
                     room.admin.pull(self)
                     room.member.pull(self)
+                    await room.save()
                     if (!room.member.length) {
                         // absolute delete room when all user leave group
                         await Message.deleteMany({ room })
@@ -261,6 +277,7 @@ export default (app, { requiredAuth }) => {
             await new Perspective({
                 user: self,
                 room,
+                type: room.type,
                 isAdmin: true,
                 lastReadMessage: null,
             }).save()
@@ -318,6 +335,7 @@ export default (app, { requiredAuth }) => {
                 new Perspective({
                     user,
                     room,
+                    type: room.type,
                     lastMessage: null,
                 }).save(),
             ])
