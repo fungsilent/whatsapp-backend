@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'
 import User from '#root/db/models/User'
 import Room from '#root/db/models/Room'
 import Message from '#root/db/models/Message'
@@ -5,7 +6,7 @@ import Perspective from '#root/db/models/Perspective'
 import { hasValues, docToData } from '#root/utils'
 
 export default app => {
-    app.get('/api/insert', async (req, res) => {
+    app.get('/api/test/insert', async (req, res) => {
         try {
             const fung = await User.findOne({ username: 'fung' })
             const terry = await User.findOne({ username: 'terry' })
@@ -57,6 +58,19 @@ export default app => {
                 }
             }
             res.sendSuccess()
+        } catch (err) {
+            res.sendFail(err.message)
+        }
+    })
+
+    app.post('/api/test/find', async (req, res) => {
+        try {
+            const { collection, id } = req.body
+            const coll = mongoose.connection.db.collection(collection)
+            const data = await coll.findOne({
+                _id: new mongoose.Types.ObjectId(id),
+            })
+            res.sendSuccess(data)
         } catch (err) {
             res.sendFail(err.message)
         }

@@ -1,12 +1,11 @@
 import moment from 'moment'
-import mongoose from 'mongoose'
+import mongoose, { model } from 'mongoose'
 import User from '#root/db/models/User'
 import Room from '#root/db/models/Room'
 import Perspective from '#root/db/models/Perspective'
 import Message from '#root/db/models/Message'
 import { formatRoomInfo } from '#root/api/room'
 import { hasValues, docToData } from '#root/utils'
-import user from './user'
 
 export default (app, { requiredAuth }) => {
     // [Friend]----------------------------------------------------------------------
@@ -161,18 +160,23 @@ export default (app, { requiredAuth }) => {
             })
                 .populate({
                     path: 'room',
-                    populate: 'lastMessage',
+                    populate: {
+                        path: 'lastMessage',
+                        populate: {
+                            path: 'user',
+                        },
+                    },
                 })
                 .lean()
             const groupList = groups.map(doc => {
                 const room = doc.room
-
                 let lastMessage = null
                 if (room.lastMessage) {
                     lastMessage = {
                         type: room.lastMessage.type,
                         content: formatLastMessage(room.lastMessage),
                         date: room.lastMessage.createdAt,
+                        by: room.lastMessage.user.name,
                     }
                 }
 
@@ -207,7 +211,7 @@ export default (app, { requiredAuth }) => {
             const self = req.user
 
             const room = await Room.findById(roomId)
-            if (!room) {
+            if (room?.type !== 'friend') {
                 return res.sendFail('Room not found')
             }
 
@@ -219,8 +223,8 @@ export default (app, { requiredAuth }) => {
 
             switch (room.type) {
                 case 'friend': {
-                    const roomFriends = await Perspective.find({ room }).lean()
-                    if (!roomFriends.length) {
+                    const friends = await Perspective.find({ room }).lean()
+                    if (!friends.length) {
                         // absolute delete room when both user remove friend each other
                         await Message.deleteMany({ room })
                         // TODO: also remove file
@@ -232,6 +236,8 @@ export default (app, { requiredAuth }) => {
                     // TODO: make sure at least one admin exist
                     room.admin.pull(self)
                     room.member.pull(self)
+                    if (!room.admin.length) {
+                    }
                     await room.save()
                     if (!room.member.length) {
                         // absolute delete room when all user leave group

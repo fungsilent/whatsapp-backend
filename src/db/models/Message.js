@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 
 const MessageSchema = new mongoose.Schema({
-    user: { type: mongoose.Types.ObjectId, required: true },
+    user: { type: mongoose.Types.ObjectId, ref: 'User', required: true },
     room: { type: mongoose.Types.ObjectId, ref: 'Room' },
     type: { type: String, enum: ['text', 'image', 'file', 'voice', 'code'], required: true },
     content: { type: String },

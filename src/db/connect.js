@@ -1,7 +1,5 @@
 import mongoose from 'mongoose'
 
-export const db = mongoose.connection.db
-
 export const connectDatabase = async () => {
     try {
         console.colorLog('Database', 'Connecting...'.yellow)
