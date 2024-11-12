@@ -10,6 +10,7 @@ const RoomSchema = new mongoose.Schema({
         fileName: { type: String },
         type: { type: String },
     },
+    isDisable: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
 })
 

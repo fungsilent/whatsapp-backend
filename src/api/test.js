@@ -56,6 +56,17 @@ export default app => {
                     await room.save()
                     break
                 }
+                case 'update': {
+                    // await Room.updateMany(
+                    //     {},
+                    //     {
+                    //         $set: {
+                    //             isDisable: false,
+                    //         },
+                    //     }
+                    // )
+                    // break
+                }
             }
             res.sendSuccess()
         } catch (err) {

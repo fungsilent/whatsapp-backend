@@ -14,13 +14,14 @@ export default (app, { requiredAuth }) => {
     app.get('/api/room/:roomId', requiredAuth, async (req, res) => {
         try {
             const { roomId } = req.params
+            const self = req.user
 
             const room = await Room.findById(roomId)
             if (!room) {
                 return res.sendFail('Room not found')
             }
 
-            const info = await formatRoomInfo(room)
+            const info = await formatRoomInfo(room, self)
             res.sendSuccess(info)
         } catch (err) {
             console.log(err)
@@ -29,7 +30,7 @@ export default (app, { requiredAuth }) => {
     })
 }
 
-export const formatRoomInfo = async room => {
+export const formatRoomInfo = async (room, self) => {
     let data = {}
     switch (room.type) {
         case 'friend': {
@@ -46,6 +47,7 @@ export const formatRoomInfo = async room => {
                 name: friend.user.name,
                 // TODO: icon URL
                 icon: friend.user.icon?.fileName,
+                isDisable: room.isDisable,
                 createdAt: room.createdAt,
             }
             break

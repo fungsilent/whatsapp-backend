@@ -1,5 +1,5 @@
 import moment from 'moment'
-import mongoose, { model } from 'mongoose'
+import mongoose from 'mongoose'
 import User from '#root/db/models/User'
 import Room from '#root/db/models/Room'
 import Perspective from '#root/db/models/Perspective'
@@ -229,21 +229,26 @@ export default (app, { requiredAuth }) => {
                         await Message.deleteMany({ room })
                         // TODO: also remove file
                         await room.deleteOne()
+                    } else {
+                        room.isDisable = true
+                        await room.save()
                     }
                     break
                 }
                 case 'group': {
-                    // TODO: make sure at least one admin exist
                     room.admin.pull(self)
                     room.member.pull(self)
-                    if (!room.admin.length) {
-                    }
-                    await room.save()
                     if (!room.member.length) {
                         // absolute delete room when all user leave group
                         await Message.deleteMany({ room })
                         // TODO: also remove file
                         await room.deleteOne()
+                    } else {
+                        if (!room.admin.length) {
+                            // make sure at least one admin exist
+                            room.admin.push(room.member[0])
+                        }
+                        await room.save()
                     }
                     break
                 }
@@ -347,7 +352,7 @@ export default (app, { requiredAuth }) => {
             ])
 
             // send back updated group info
-            const info = await formatRoomInfo(room)
+            const info = await formatRoomInfo(room, self)
             res.sendSuccess(info)
         } catch (err) {
             console.log(err)
@@ -396,7 +401,7 @@ export default (app, { requiredAuth }) => {
             ])
 
             // send back updated group info
-            const info = await formatRoomInfo(room)
+            const info = await formatRoomInfo(room, self)
             // TODO: handle no member
             res.sendSuccess(info)
         } catch (err) {
