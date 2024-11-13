@@ -28,6 +28,60 @@ export default (app, { requiredAuth }) => {
             res.sendFail('Fetch room info failed')
         }
     })
+
+    /*
+     * Get room message list
+     * Method   GET
+     * Fung Lee
+     */
+    app.get('/api/room/:roomId/message', requiredAuth, async (req, res) => {
+        try {
+            const { roomId } = req.params
+            const { page, perPage } = req.query
+
+            const room = await Room.findById(roomId)
+            if (!room) {
+                return res.sendFail('Room not found')
+            }
+
+            const limit = Math.max(perPage, 1)
+            const skip = Math.max(page - 1, 0) * limit
+            const messages = await Message.aggregate([
+                { $match: { room: room._id } },
+                { $sort: { createdAt: -1 } },
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'user',
+                        foreignField: '_id',
+                        as: 'user',
+                    },
+                },
+                { $unwind: '$user' },
+                {
+                    $project: {
+                        _id: 0,
+                        messageId: '$_id',
+                        user: {
+                            id: '$user._id',
+                            name: '$user.name',
+                            username: '$user.username',
+                        },
+                        type: 1,
+                        content: 1,
+                        date: '$createdAt',
+                    },
+                },
+            ])
+
+            res.sendSuccess(messages)
+        } catch (err) {
+            console.log(err)
+            res.sendFail('Fetch room message failed')
+        }
+    })
 }
 
 export const formatRoomInfo = async (room, self) => {
@@ -48,7 +102,7 @@ export const formatRoomInfo = async (room, self) => {
                 // TODO: icon URL
                 icon: friend.user.icon?.fileName,
                 isDisable: room.isDisable,
-                createdAt: room.createdAt,
+                date: room.createdAt,
             }
             break
         }
@@ -69,7 +123,7 @@ export const formatRoomInfo = async (room, self) => {
                 name: room.name,
                 // TODO: icon URL
                 icon: room.icon?.fileName,
-                createdAt: room.createdAt,
+                date: room.createdAt,
                 members,
                 membersCount: members.length,
             }
