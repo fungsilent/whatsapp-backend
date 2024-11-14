@@ -1,4 +1,3 @@
-import mongoose from 'mongoose'
 import User from '#root/db/models/User'
 import Room from '#root/db/models/Room'
 import Perspective from '#root/db/models/Perspective'
@@ -38,9 +37,15 @@ export default (app, { requiredAuth }) => {
         try {
             const { roomId } = req.params
             const { page, perPage } = req.query
+            const self = req.user
 
             const room = await Room.findById(roomId)
             if (!room) {
+                return res.sendFail('Room not found')
+            }
+
+            const isMember = !!room.member.find(id => id.equals(self._id))
+            if (!isMember) {
                 return res.sendFail('Room not found')
             }
 
@@ -48,7 +53,7 @@ export default (app, { requiredAuth }) => {
             const skip = Math.max(page - 1, 0) * limit
             const messages = await Message.aggregate([
                 { $match: { room: room._id } },
-                { $sort: { createdAt: -1 } },
+                { $sort: { createdAt: 1 } },
                 { $skip: skip },
                 { $limit: limit },
                 {
@@ -65,6 +70,9 @@ export default (app, { requiredAuth }) => {
                         _id: 0,
                         messageId: '$_id',
                         user: {
+                            isSelf: {
+                                $eq: ['$user._id', self._id],
+                            },
                             id: '$user._id',
                             name: '$user.name',
                             username: '$user.username',
