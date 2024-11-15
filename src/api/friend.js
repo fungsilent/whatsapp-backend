@@ -51,6 +51,7 @@ export default (app, { requiredAuth }) => {
                 member: {
                     $all: [self, friend],
                 },
+                isDisable: false,
             })
             if (existRoom) {
                 return res.sendSuccess({
