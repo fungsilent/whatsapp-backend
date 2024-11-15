@@ -7,7 +7,7 @@ import Message from '#root/db/models/Message'
 import { formatRoomInfo } from '#root/api/room'
 import { hasValues, docToData } from '#root/utils'
 
-export default (app, { requiredAuth }) => {
+export default (app, io, { requiredAuth }) => {
     // [Friend]----------------------------------------------------------------------
     /*
      * Search user list by username for add to friend

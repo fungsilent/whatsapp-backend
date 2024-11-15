@@ -6,6 +6,7 @@ const setWebSocket = io => {
 
     io.on('connection', socket => {
         console.colorLog('WebSocket', `${socket.user.name.green} connected`)
+        socket.join(socket.user._id.toString())
     })
 }
 

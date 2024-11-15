@@ -3,7 +3,7 @@ import argon2 from 'argon2'
 import User from '#root/db/models/User'
 import { hasValues, docToData } from '#root/utils'
 
-export default (app, { requiredAuth }) => {
+export default (app, io, { requiredAuth }) => {
     /*
      * User sign up account
      * Method   POST

@@ -25,26 +25,26 @@ async function startServer() {
     // Set up server
     await connectDatabase()
     const app = express()
-    setMiddleware(app)
-    setRoutes(app)
     const server = app.listen(process.env.PORT, () => {
         console.colorLog('App', `Server listen on http://localhost:${process.env.PORT}/`)
     })
-
     const io = new Server(server, {
         path: '/ws/',
         transports: ['websocket'],
     })
+
     setWebSocket(io)
+    setMiddleware(app)
+    setRoutes(app, io)
 }
 
 /*
  * Set routes
  */
-const setRoutes = app => {
+const setRoutes = (app, io) => {
     app.use('/api/file', express.static(process.env.filesPath))
 
-    apiRoutes(app)
+    apiRoutes(app, io)
 
     // List all api
     const endpoints = expressListEndpoints(app)

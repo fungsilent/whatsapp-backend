@@ -4,7 +4,7 @@ import Perspective from '#root/db/models/Perspective'
 import Message from '#root/db/models/Message'
 import { hasValues, docToData } from '#root/utils'
 
-export default (app, { requiredAuth }) => {
+export default (app, io, { requiredAuth }) => {
     /*
      * Get room info
      * Method   GET
@@ -33,7 +33,7 @@ export default (app, { requiredAuth }) => {
      * Method   GET
      * Fung Lee
      */
-    app.get('/api/room/:roomId/message', requiredAuth, async (req, res) => {
+    app.get('/api/room/:roomId/message/list', requiredAuth, async (req, res) => {
         try {
             const { roomId } = req.params
             const { page, perPage } = req.query
@@ -53,9 +53,10 @@ export default (app, { requiredAuth }) => {
             const skip = Math.max(page - 1, 0) * limit
             const messages = await Message.aggregate([
                 { $match: { room: room._id } },
-                { $sort: { createdAt: 1 } },
+                { $sort: { createdAt: -1 } },
                 { $skip: skip },
                 { $limit: limit },
+                { $sort: { createdAt: 1 } },
                 {
                     $lookup: {
                         from: 'users',
@@ -90,11 +91,43 @@ export default (app, { requiredAuth }) => {
             res.sendFail('Fetch room message failed')
         }
     })
+
+    /*
+     * Send message to room
+     * Method   POST
+     * Fung Lee
+     */
+    app.post('/api/room/:roomId/message/add', requiredAuth, async (req, res) => {
+        try {
+            const { roomId } = req.params
+            const { message } = req.body
+
+            const room = await Room.findById(roomId)
+            if (!room) {
+                return res.sendFail('Room not found')
+            }
+
+            const newMessage = new Message({
+                user: req.user,
+                room,
+                type: 'text',
+                content: message,
+            })
+            await newMessage.save()
+
+            room.member.forEach(memberId => {
+                io.to(memberId.toString()).emit('added_room_message')
+            })
+            res.sendSuccess(true)
+        } catch (err) {
+            console.log(err)
+            res.sendFail('Add message failed')
+        }
+    })
 }
 
 export const formatRoomInfo = async (room, self) => {
     let data = {}
-    console.log('room', room)
     switch (room.type) {
         case 'friend': {
             const friendId = room.member.find(id => !id.equals(self._id))
