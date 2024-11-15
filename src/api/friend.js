@@ -148,6 +148,7 @@ export default (app, { requiredAuth }) => {
                 return {
                     roomId: room._id,
                     type: room.type,
+                    isDisable: room.isDisable,
                     name: friend.name,
                     icon: friend.icon?.fileName || null,
                     lastMessage,
@@ -184,6 +185,7 @@ export default (app, { requiredAuth }) => {
                 return {
                     roomId: room._id,
                     type: room.type,
+                    isDisable: room.isDisable,
                     name: room.name,
                     icon: room.icon?.fileName || null,
                     lastMessage,

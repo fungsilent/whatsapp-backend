@@ -94,35 +94,31 @@ export default (app, { requiredAuth }) => {
 
 export const formatRoomInfo = async (room, self) => {
     let data = {}
+    console.log('room', room)
     switch (room.type) {
         case 'friend': {
-            const friend = await Perspective.findOne({
-                room,
-                user: { $ne: self },
-            })
-                .populate('user')
-                .lean()
+            const friendId = room.member.find(id => !id.equals(self._id))
+            const friend = await User.findById(friendId).lean()
 
             data = {
                 roomId: room._id,
                 type: room.type,
-                name: friend.user.name,
+                name: friend.name,
                 // TODO: icon URL
-                icon: friend.user.icon?.fileName,
+                icon: friend.icon?.fileName,
                 isDisable: room.isDisable,
                 date: room.createdAt,
             }
             break
         }
         case 'group': {
-            let members = await Perspective.find({ room }).populate('user').lean()
-            members = members.map(member => {
-                const user = member.user
+            await room.populate('member')
+            const members = room.member.map(member => {
                 return {
                     userId: member._id,
-                    name: user.name,
-                    username: user.username,
-                    isAdmin: member.isAdmin,
+                    name: member.name,
+                    username: member.username,
+                    isAdmin: !!room.admin.find(id => id.equals(member._id)),
                 }
             })
             data = {
