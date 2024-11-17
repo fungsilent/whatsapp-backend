@@ -57,15 +57,16 @@ export default app => {
                     break
                 }
                 case 'update': {
-                    // await Room.updateMany(
-                    //     {},
-                    //     {
-                    //         $set: {
-                    //             isDisable: false,
-                    //         },
-                    //     }
-                    // )
-                    // break
+                    const rooms = await Room.find({
+                        type: 'group',
+                    })
+                    console.log(rooms)
+                    // await rooms.map(room => {
+                    //     const user = room.admin[0]
+                    //     room.createdBy = user
+                    //     return room.save()
+                    // })
+                    break
                 }
             }
             res.sendSuccess()

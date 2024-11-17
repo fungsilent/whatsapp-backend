@@ -11,6 +11,7 @@ const RoomSchema = new mongoose.Schema({
         type: { type: String },
     },
     isDisable: { type: Boolean, default: false },
+    createdBy: { type: mongoose.Types.ObjectId, ref: 'User' },
     createdAt: { type: Date, default: Date.now },
 })
 

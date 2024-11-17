@@ -36,7 +36,7 @@ export default (app, io, { requiredAuth }) => {
     app.get('/api/room/:roomId/message/list', requiredAuth, async (req, res) => {
         try {
             const { roomId } = req.params
-            const { page, perPage } = req.query
+            // const { page, perPage } = req.query
             const self = req.user
 
             const room = await Room.findById(roomId)
@@ -49,14 +49,15 @@ export default (app, io, { requiredAuth }) => {
                 return res.sendFail('Room not found')
             }
 
-            const limit = Math.max(perPage, 1)
-            const skip = Math.max(page - 1, 0) * limit
+            /* TODO: paging */
+            // const limit = Math.max(perPage, 1)
+            // const skip = Math.max(page - 1, 0) * limit
             const messages = await Message.aggregate([
                 { $match: { room: room._id } },
-                { $sort: { createdAt: -1 } },
-                { $skip: skip },
-                { $limit: limit },
-                { $sort: { createdAt: 1 } },
+                // { $sort: { createdAt: -1 } },
+                // { $skip: skip },
+                // { $limit: limit },
+                // { $sort: { createdAt: 1 } },
                 {
                     $lookup: {
                         from: 'users',
@@ -115,8 +116,21 @@ export default (app, io, { requiredAuth }) => {
             })
             await newMessage.save()
 
+            // sent new message to all room online members
             room.member.forEach(memberId => {
-                io.to(memberId.toString()).emit('added_room_message')
+                io.to(memberId.toString()).emit(io.event.NEW_ROOM_MESSAGE, {
+                    roomId: room._id,
+                    messageId: newMessage._id,
+                    user: {
+                        isSelf: newMessage.user._id.equals(memberId),
+                        id: newMessage.user._id,
+                        name: newMessage.user.name,
+                        username: newMessage.user.username,
+                    },
+                    type: newMessage.type,
+                    content: newMessage.content,
+                    date: newMessage.createdAt,
+                })
             })
             res.sendSuccess(true)
         } catch (err) {
@@ -137,15 +151,17 @@ export const formatRoomInfo = async (room, self) => {
                 roomId: room._id,
                 type: room.type,
                 name: friend.name,
+                username: friend.username,
                 // TODO: icon URL
                 icon: friend.icon?.fileName,
                 isDisable: room.isDisable,
-                date: room.createdAt,
+                createdAt: room.createdAt,
             }
             break
         }
         case 'group': {
             await room.populate('member')
+            await room.populate('createdBy')
             const members = room.member.map(member => {
                 return {
                     userId: member._id,
@@ -154,13 +170,19 @@ export const formatRoomInfo = async (room, self) => {
                     isAdmin: !!room.admin.find(id => id.equals(member._id)),
                 }
             })
+
             data = {
                 roomId: room._id,
                 type: room.type,
                 name: room.name,
                 // TODO: icon URL
                 icon: room.icon?.fileName,
-                date: room.createdAt,
+                createdAt: room.createdAt,
+                createdBy: {
+                    userId: room.createdBy._id,
+                    name: room.createdBy.name,
+                    username: room.createdBy.username,
+                },
                 members,
                 membersCount: members.length,
             }

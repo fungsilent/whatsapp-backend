@@ -214,7 +214,7 @@ export default (app, io, { requiredAuth }) => {
             const self = req.user
 
             const room = await Room.findById(roomId)
-            if (room?.type !== 'friend') {
+            if (!room) {
                 return res.sendFail('Room not found')
             }
 
@@ -260,7 +260,7 @@ export default (app, io, { requiredAuth }) => {
             res.sendSuccess(true)
         } catch (err) {
             console.log(err)
-            res.sendSuccess(false)
+            res.sendFail('Remove failed')
         }
     })
 
@@ -286,6 +286,7 @@ export default (app, io, { requiredAuth }) => {
                 name,
                 // TODO: icon
                 icon: null,
+                createdBy: self,
             }).save()
 
             await new Perspective({
@@ -322,7 +323,7 @@ export default (app, io, { requiredAuth }) => {
             }
 
             // check permission
-            const isAdmin = room.admin.find(user => !user.equals(self))
+            const isAdmin = !!room.admin.find(user => user.equals(self._id))
             if (!isAdmin) {
                 return res.sendFail('You are not a group administrator')
             }
@@ -337,7 +338,7 @@ export default (app, io, { requiredAuth }) => {
             }
 
             // is user already in group?
-            const isMember = !!room.member.find(id => id.equals(user))
+            const isMember = !!room.member.find(id => id.equals(user._id))
             if (isMember) {
                 return res.sendFail('User already in group')
             }
@@ -354,8 +355,12 @@ export default (app, io, { requiredAuth }) => {
                 }).save(),
             ])
 
+            const info = await formatRoomInfo(room)
+            // update the latest room info to all room online members
+            room.member.forEach(member => {
+                io.to(member._id.toString()).emit(io.event.REFRESH_ROOM_INFO, info)
+            })
             // send back updated group info
-            const info = await formatRoomInfo(room, self)
             res.sendSuccess(info)
         } catch (err) {
             console.log(err)
@@ -380,7 +385,7 @@ export default (app, io, { requiredAuth }) => {
             }
 
             // check permission
-            const isAdmin = room.admin.find(user => !user.equals(self))
+            const isAdmin = !!room.admin.find(user => user.equals(self._id))
             if (!isAdmin) {
                 return res.sendFail('You are not a group administrator')
             }
@@ -395,18 +400,31 @@ export default (app, io, { requiredAuth }) => {
             room.admin.pull(user)
             room.member.pull(user)
 
-            await Promise.all([
-                room.save(),
-                await Perspective.deleteOne({
-                    user,
-                    room,
-                }),
-            ])
+            await Perspective.deleteOne({
+                user,
+                room,
+            })
 
-            // send back updated group info
-            const info = await formatRoomInfo(room, self)
-            // TODO: handle no member
-            res.sendSuccess(info)
+            let data = {}
+            if (room.member.length) {
+                await room.save()
+                const info = await formatRoomInfo(room)
+                data = {
+                    ...data,
+                    ...info,
+                }
+            } else {
+                // absolute delete room when no member in group
+                await Promise.all[(room.deleteOne(), Perspective.deleteMany({ room }), Message.deleteMany({ room }))]
+            }
+
+            // update the latest room info to all room online members
+            room.member.forEach(member => {
+                io.to(member._id.toString()).emit(io.event.REFRESH_ROOM_INFO, { isRemoved: false, ...data })
+            })
+            io.to(user._id.toString()).emit(io.event.REFRESH_ROOM_INFO, { isRemoved: true })
+
+            res.sendSuccess(true)
         } catch (err) {
             console.log(err)
             res.sendFail('Remove group member failed')
