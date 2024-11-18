@@ -142,6 +142,7 @@ export default (app, io, { requiredAuth }) => {
                         type: room.lastMessage.type,
                         content: formatLastMessage(room.lastMessage),
                         date: room.lastMessage.createdAt,
+                        by: null,
                     }
                 }
 

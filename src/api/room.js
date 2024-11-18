@@ -98,7 +98,7 @@ export default (app, io, { requiredAuth }) => {
      * Method   POST
      * Fung Lee
      */
-    app.post('/api/room/:roomId/message/add', requiredAuth, async (req, res) => {
+    app.post('/api/room/:roomId/message/send', requiredAuth, async (req, res) => {
         try {
             const { roomId } = req.params
             const { message } = req.body
@@ -116,10 +116,16 @@ export default (app, io, { requiredAuth }) => {
             })
             await newMessage.save()
 
+            room.lastMessage = newMessage
+            await room.save()
+
             // sent new message to all room online members
             room.member.forEach(memberId => {
                 io.to(memberId.toString()).emit(io.event.NEW_ROOM_MESSAGE, {
-                    roomId: room._id,
+                    room: {
+                        id: room._id,
+                        type: room.type,
+                    },
                     messageId: newMessage._id,
                     user: {
                         isSelf: newMessage.user._id.equals(memberId),
