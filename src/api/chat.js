@@ -1,10 +1,8 @@
-import moment from 'moment'
-import mongoose from 'mongoose'
 import User from '#root/db/models/User'
 import Room from '#root/db/models/Room'
 import Perspective from '#root/db/models/Perspective'
 import Message from '#root/db/models/Message'
-import { formatRoomInfo } from '#root/api/room'
+import { formatRoomInfo, formatLastMessage } from '#root/api/room'
 import { hasValues, docToData } from '#root/utils'
 
 export default (app, io, { requiredAuth }) => {
@@ -90,181 +88,6 @@ export default (app, io, { requiredAuth }) => {
         }
     })
 
-    /*
-     * Add user to friend by username
-     * Method   GET
-     * Fung Lee
-     */
-    app.get('/api/friend/list', requiredAuth, async (req, res) => {
-        try {
-            /* function */
-            const formatLastMessage = lastMessage => {
-                switch (lastMessage.type) {
-                    case 'text': {
-                        return (lastMessage.content || '').substring(0, 50)
-                    }
-                    // TODO: frontend handle ?
-                    case 'image':
-                    case 'file':
-                    case 'voice':
-                    case 'code': {
-                    }
-                }
-            }
-
-            const self = req.user
-
-            /* friend */
-            const friends = await Perspective.find({
-                user: self,
-                type: 'friend',
-            })
-                .populate({
-                    path: 'room',
-                    populate: [
-                        {
-                            path: 'member',
-                            match: { _id: { $ne: req.user } },
-                        },
-                        {
-                            path: 'lastMessage',
-                        },
-                    ],
-                })
-                .lean()
-            const friendList = friends.map(doc => {
-                const room = doc.room
-                const friend = room.member.shift()
-
-                let lastMessage = null
-                if (room.lastMessage) {
-                    lastMessage = {
-                        type: room.lastMessage.type,
-                        content: formatLastMessage(room.lastMessage),
-                        date: room.lastMessage.createdAt,
-                        by: null,
-                    }
-                }
-
-                return {
-                    roomId: room._id,
-                    type: room.type,
-                    isDisable: room.isDisable,
-                    name: friend.name,
-                    icon: friend.icon?.fileName || null,
-                    lastMessage,
-                }
-            })
-
-            /* groups */
-            const groups = await Perspective.find({
-                user: self,
-                type: 'group',
-            })
-                .populate({
-                    path: 'room',
-                    populate: {
-                        path: 'lastMessage',
-                        populate: {
-                            path: 'user',
-                        },
-                    },
-                })
-                .lean()
-            const groupList = groups.map(doc => {
-                const room = doc.room
-                let lastMessage = null
-                if (room.lastMessage) {
-                    lastMessage = {
-                        type: room.lastMessage.type,
-                        content: formatLastMessage(room.lastMessage),
-                        date: room.lastMessage.createdAt,
-                        by: room.lastMessage.user.name,
-                    }
-                }
-
-                return {
-                    roomId: room._id,
-                    type: room.type,
-                    isDisable: room.isDisable,
-                    name: room.name,
-                    icon: room.icon?.fileName || null,
-                    lastMessage,
-                }
-            })
-
-            const list = [...friendList, ...groupList].sort((a, b) => {
-                // descending
-                return moment(b.lastMessage?.date).valueOf() - moment(a.lastMessage?.date).valueOf()
-            })
-            res.sendSuccess(list)
-        } catch (err) {
-            console.log(err)
-            res.sendFail('Friend list no found')
-        }
-    })
-
-    /*
-     * Delete friend by roomId
-     * Method   DELETE
-     * Fung Lee
-     */
-    app.delete('/api/friend/remove', requiredAuth, async (req, res) => {
-        try {
-            const { roomId } = req.body
-            const self = req.user
-
-            const room = await Room.findById(roomId)
-            if (!room) {
-                return res.sendFail('Room not found')
-            }
-
-            // unilaterally remove a friend from own perspective first
-            await Perspective.deleteOne({
-                user: self,
-                room: roomId,
-            })
-
-            switch (room.type) {
-                case 'friend': {
-                    const friends = await Perspective.find({ room }).lean()
-                    if (!friends.length) {
-                        // absolute delete room when both user remove friend each other
-                        await Message.deleteMany({ room })
-                        // TODO: also remove file
-                        await room.deleteOne()
-                    } else {
-                        room.isDisable = true
-                        await room.save()
-                    }
-                    break
-                }
-                case 'group': {
-                    room.admin.pull(self)
-                    room.member.pull(self)
-                    if (!room.member.length) {
-                        // absolute delete room when all user leave group
-                        await Message.deleteMany({ room })
-                        // TODO: also remove file
-                        await room.deleteOne()
-                    } else {
-                        if (!room.admin.length) {
-                            // make sure at least one admin exist
-                            room.admin.push(room.member[0])
-                        }
-                        await room.save()
-                    }
-                    break
-                }
-            }
-
-            res.sendSuccess(true)
-        } catch (err) {
-            console.log(err)
-            res.sendFail('Remove failed')
-        }
-    })
-
     // [Group]----------------------------------------------------------------------
 
     /*
@@ -318,7 +141,12 @@ export default (app, io, { requiredAuth }) => {
             const self = req.user
 
             // check room
-            const room = await Room.findById(roomId)
+            const room = await Room.findById(roomId).populate({
+                path: 'lastMessage',
+                populate: {
+                    path: 'user',
+                },
+            })
             if (room?.type !== 'group') {
                 return res.sendFail('Group not found')
             }
@@ -357,10 +185,27 @@ export default (app, io, { requiredAuth }) => {
             ])
 
             const info = await formatRoomInfo(room)
-            // update the latest room info to all room online members
+            // update the latest room info to all room members
             room.member.forEach(member => {
                 io.to(member._id.toString()).emit(io.event.REFRESH_ROOM_INFO, info)
             })
+
+            // add new room to to user
+            io.to(user._id.toString()).emit(io.event.NEW_ROOM, {
+                roomId: room._id,
+                type: room.type,
+                isDisable: room.isDisable,
+                name: room.name,
+                icon: room.icon?.fileName || null,
+                lastMessage: room.lastMessage,
+                lastMessage: {
+                    type: room.lastMessage.type,
+                    content: formatLastMessage(room.lastMessage),
+                    date: room.lastMessage.createdAt,
+                    by: room.lastMessage.user.name,
+                },
+            })
+
             // send back updated group info
             res.sendSuccess(info)
         } catch (err) {
@@ -421,9 +266,9 @@ export default (app, io, { requiredAuth }) => {
 
             // update the latest room info to all room online members
             room.member.forEach(member => {
-                io.to(member._id.toString()).emit(io.event.REFRESH_ROOM_INFO, { isRemoved: false, ...data })
+                io.to(member._id.toString()).emit(io.event.REFRESH_ROOM_INFO, data)
             })
-            io.to(user._id.toString()).emit(io.event.REFRESH_ROOM_INFO, { isRemoved: true })
+            io.to(user._id.toString()).emit(io.event.REMOVE_ROOM, { roomId: room._id })
 
             res.sendSuccess(true)
         } catch (err) {
