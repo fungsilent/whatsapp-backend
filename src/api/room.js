@@ -152,6 +152,14 @@ export default (app, io, { requiredAuth }) => {
                             room.admin.push(room.member[0])
                         }
                         await room.save()
+
+                        // update member the someone leave group room
+                        room.member.forEach(memberId => {
+                            io.to(memberId.toString()).emit(io.event.MEMBER_LEAVE_ROOM, {
+                                roomId,
+                                memberId: self._id,
+                            })
+                        })
                     } else {
                         // absolute delete room when all user leave group
                         await Message.deleteMany({ room })
@@ -163,7 +171,6 @@ export default (app, io, { requiredAuth }) => {
             }
 
             // update self to remove room
-            console.log(self._id.toString())
             io.to(self._id.toString()).emit(io.event.REMOVE_ROOM, { roomId })
 
             res.sendSuccess(true)

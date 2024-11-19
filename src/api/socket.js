@@ -15,6 +15,7 @@ const setWebSocket = io => {
         REMOVE_ROOM: 'REMOVE_ROOM',
         DISABLE_ROOM: 'DISABLE_ROOM',
         NEW_ROOM: 'NEW_ROOM',
+        MEMBER_LEAVE_ROOM: 'MEMBER_LEAVE_ROOM',
     }
 }
 
