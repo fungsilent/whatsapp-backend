@@ -48,7 +48,7 @@ const setRoutes = (app, io) => {
 
     // List all api
     const endpoints = expressListEndpoints(app)
-    app.get('/api', (req, res) => {
+    app.get('/', (req, res) => {
         const { endpoint } = req.query
         if (endpoint) {
             const findApi = endpoints.filter(ep => ep.path.startsWith(endpoint))
