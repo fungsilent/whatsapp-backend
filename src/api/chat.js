@@ -184,38 +184,41 @@ export default (app, io, { requiredAuth }) => {
                 }).save(),
             ])
 
-            const info = await formatRoomInfo(room)
             // update the latest room info to all room members
+            const roomInfo = await formatRoomInfo(room)
             room.member.forEach(member => {
-                io.to(member._id.toString()).emit(io.event.REFRESH_ROOM_INFO, info)
+                io.to(member._id.toString()).emit(io.event.REFRESH_ROOM_INFO, roomInfo)
             })
 
             // add new room to to user
-            io.to(user._id.toString()).emit(io.event.NEW_ROOM, {
+            let roomData = {
                 roomId: room._id,
                 type: room.type,
                 isDisable: room.isDisable,
                 name: room.name,
                 icon: room.icon?.fileName || null,
-                lastMessage: room.lastMessage,
-                lastMessage: {
+                lastMessage: null,
+            }
+            if (room.lastMessage) {
+                lastMessage = {
                     type: room.lastMessage.type,
                     content: formatLastMessage(room.lastMessage),
                     date: room.lastMessage.createdAt,
                     by: room.lastMessage.user.name,
-                },
-            })
+                }
+            }
+            io.to(user._id.toString()).emit(io.event.NEW_ROOM, roomData)
 
             // send back updated group info
-            res.sendSuccess(info)
+            res.sendSuccess(roomData)
         } catch (err) {
             console.log(err)
-            res.sendFail('Create group failed')
+            res.sendFail('Add group member failed')
         }
     })
 
     /*
-     * Remove group member by administrator
+     * Kick group member by administrator
      * Method   DELETE
      * Fung Lee
      */
@@ -253,6 +256,10 @@ export default (app, io, { requiredAuth }) => {
 
             let data = {}
             if (room.member.length) {
+                if (!room.admin.length) {
+                    // make sure at least one admin exist
+                    room.admin.push(room.member[0])
+                }
                 await room.save()
                 const info = await formatRoomInfo(room)
                 data = {
