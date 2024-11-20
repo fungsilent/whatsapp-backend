@@ -77,6 +77,7 @@ export default (app, io, { requiredAuth }) => {
                 lastReadMessage: null,
             }).save()
 
+            // add new room to users
             const roomData = {
                 roomId: newRoom._id,
                 type: newRoom.type,
@@ -137,6 +138,16 @@ export default (app, io, { requiredAuth }) => {
                 isAdmin: true,
                 lastReadMessage: null,
             }).save()
+
+            // add new room to self
+            io.to(self._id.toString()).emit(io.event.NEW_ROOM, {
+                roomId: room._id,
+                type: room.type,
+                isDisable: room.isDisable,
+                name: room.name,
+                icon: room.icon?.fileName || null,
+                lastMessage: null,
+            })
 
             res.sendSuccess({
                 roomId: room._id,
@@ -207,7 +218,7 @@ export default (app, io, { requiredAuth }) => {
                 io.to(member._id.toString()).emit(io.event.REFRESH_ROOM_INFO, roomInfo)
             })
 
-            // add new room to to user
+            // add new room to user
             let roomData = {
                 roomId: room._id,
                 type: room.type,
