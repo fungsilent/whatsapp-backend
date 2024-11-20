@@ -15,7 +15,7 @@ export default (app, io, { requiredAuth }) => {
     app.get('/api/friend/search/:username', requiredAuth, async (req, res) => {
         try {
             const { username } = req.params
-            let users = await User.find({ username: { $regex: new RegExp(username, 'i') } }, '-_id -password').lean()
+            let users = await User.find({ username: { $regex: new RegExp(username, 'i') } }, '-password').lean()
             users = users.map(doc => docToData(doc))
             // TODO: pass user icon
             res.sendSuccess(users)
@@ -76,6 +76,23 @@ export default (app, io, { requiredAuth }) => {
                 type: newRoom.type,
                 lastReadMessage: null,
             }).save()
+
+            const roomData = {
+                roomId: newRoom._id,
+                type: newRoom.type,
+                isDisable: newRoom.isDisable,
+                lastMessage: null,
+            }
+            io.to(self._id.toString()).emit(io.event.NEW_ROOM, {
+                ...roomData,
+                name: friend.name,
+                icon: friend.icon?.fileName || null,
+            })
+            io.to(friend._id.toString()).emit(io.event.NEW_ROOM, {
+                ...roomData,
+                name: self.name,
+                icon: self.icon?.fileName || null,
+            })
 
             res.sendSuccess({
                 isNew: true,
