@@ -3,6 +3,8 @@ import argon2 from 'argon2'
 import User from '#root/db/models/User'
 import { hasValues, docToData } from '#root/utils'
 
+const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,20}$/
+
 export default (app, io, { requiredAuth }) => {
     /*
      * User sign up account
@@ -21,6 +23,11 @@ export default (app, io, { requiredAuth }) => {
             if (user) {
                 return res.sendFail('Username has been used')
             }
+
+            if (!password.text(passwordRegex)) {
+                return res.sendFail('Invalid password')
+            }
+
             const newUser = new User({
                 name,
                 username: username.toLowerCase(),
@@ -72,7 +79,7 @@ export default (app, io, { requiredAuth }) => {
             if (name) {
                 self.name = name
             }
-            if (password) {
+            if (password && password.text(passwordRegex)) {
                 self.password = password
             }
             await self.save()
