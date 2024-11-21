@@ -219,14 +219,7 @@ export default (app, io, { requiredAuth }) => {
             })
 
             // add new room to user
-            let roomData = {
-                roomId: room._id,
-                type: room.type,
-                isDisable: room.isDisable,
-                name: room.name,
-                icon: room.icon?.fileName || null,
-                lastMessage: null,
-            }
+            let lastMessage = null
             if (room.lastMessage) {
                 lastMessage = {
                     type: room.lastMessage.type,
@@ -234,6 +227,14 @@ export default (app, io, { requiredAuth }) => {
                     date: room.lastMessage.createdAt,
                     by: room.lastMessage.user.name,
                 }
+            }
+            const roomData = {
+                roomId: room._id,
+                type: room.type,
+                isDisable: room.isDisable,
+                name: room.name,
+                icon: room.icon?.fileName || null,
+                lastMessage,
             }
             io.to(user._id.toString()).emit(io.event.NEW_ROOM, roomData)
 
