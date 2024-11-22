@@ -180,12 +180,10 @@ export default (app, io, { requiredAuth }) => {
                         }
                         await room.save()
 
-                        // update member the someone leave group room
-                        room.member.forEach(memberId => {
-                            io.to(memberId.toString()).emit(io.event.MEMBER_LEAVE_ROOM, {
-                                roomId,
-                                memberId: self._id,
-                            })
+                        // update member someone leave group room
+                        const info = await formatRoomInfo(room)
+                        room.member.forEach(member => {
+                            io.to(member._id.toString()).emit(io.event.REFRESH_ROOM_INFO, info)
                         })
                     } else {
                         // absolute delete room when all user leave group

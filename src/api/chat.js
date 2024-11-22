@@ -230,7 +230,10 @@ export default (app, io, { requiredAuth }) => {
                     type: room.lastMessage.type,
                     content: formatLastMessage(room.lastMessage),
                     date: room.lastMessage.createdAt,
-                    by: room.lastMessage.user.name,
+                    by: {
+                        userId: room.lastMessage.user._id,
+                        name: room.lastMessage.user.name,
+                    },
                 }
             }
             const roomData = {
