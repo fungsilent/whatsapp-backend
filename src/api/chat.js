@@ -16,7 +16,12 @@ export default (app, io, { requiredAuth }) => {
         try {
             const { username } = req.params
             let users = await User.find({ username: { $regex: new RegExp(username, 'i') } }, '-password').lean()
-            users = users.map(doc => docToData(doc))
+            users = users.map(doc => {
+                const data = docToData(doc)
+                data.userId = data.id
+                delete data.id
+                return data
+            })
             // TODO: pass user icon
             res.sendSuccess(users)
         } catch (err) {

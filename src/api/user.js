@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken'
 import argon2 from 'argon2'
 import User from '#root/db/models/User'
+import Room from '#root/db/models/Room'
 import { hasValues, docToData } from '#root/utils'
 
-const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,20}$/
+const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/
 
 export default (app, io, { requiredAuth }) => {
     /*
@@ -83,7 +84,23 @@ export default (app, io, { requiredAuth }) => {
                 self.password = password
             }
             await self.save()
-            res.sendSuccess(responseUserInfo(self))
+
+            const updatedInfo = responseUserInfo(self)
+
+            const rooms = await Room.find({
+                member: self,
+            }).populate('member')
+            rooms.map(room => {
+                room.member.forEach(user => {
+                    io.to(user._id.toString()).emit(io.event.UPDATE_USER_INFO, {
+                        userId: updatedInfo.userId,
+                        name: updatedInfo.name,
+                        username: updatedInfo.username,
+                    })
+                })
+            })
+
+            res.sendSuccess(updatedInfo)
         } catch (err) {
             res.sendFail(err.message)
         }
@@ -108,6 +125,8 @@ const generateToken = data => {
 
 const responseUserInfo = user => {
     const data = docToData(user)
+    data.userId = user.id
+    delete data.id
     delete data.password
     delete data.createdAt
     return data

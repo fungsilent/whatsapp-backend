@@ -5,7 +5,7 @@ const setWebSocket = io => {
     io.use(socketAuth)
 
     io.on('connection', socket => {
-        console.colorLog('WebSocket', `${socket.user.name.green} connected`)
+        console.colorLog('WebSocket', `${socket.user.username.green} connected`)
         socket.join(socket.user._id.toString())
     })
 
@@ -16,6 +16,7 @@ const setWebSocket = io => {
         DISABLE_ROOM: 'DISABLE_ROOM',
         NEW_ROOM: 'NEW_ROOM',
         MEMBER_LEAVE_ROOM: 'MEMBER_LEAVE_ROOM',
+        UPDATE_USER_INFO: 'UPDATE_USER_INFO',
     }
 }
 

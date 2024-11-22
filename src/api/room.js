@@ -51,6 +51,7 @@ export default (app, io, { requiredAuth }) => {
                     roomId: room._id,
                     type: room.type,
                     isDisable: room.isDisable,
+                    userId: friend._id,
                     name: friend.name,
                     icon: friend.icon?.fileName || null,
                     lastMessage,
@@ -80,7 +81,10 @@ export default (app, io, { requiredAuth }) => {
                         type: room.lastMessage.type,
                         content: formatLastMessage(room.lastMessage),
                         date: room.lastMessage.createdAt,
-                        by: room.lastMessage.user.name,
+                        by: {
+                            userId: room.lastMessage.user._id,
+                            name: room.lastMessage.user.name,
+                        },
                     }
                 }
 
@@ -102,6 +106,29 @@ export default (app, io, { requiredAuth }) => {
         } catch (err) {
             console.log(err)
             res.sendFail('Fetch room list failed')
+        }
+    })
+
+    /*
+     * Get room info
+     * Method   GET
+     * Fung Lee
+     */
+    app.get('/api/room/:roomId', requiredAuth, async (req, res) => {
+        try {
+            const { roomId } = req.params
+            const self = req.user
+
+            const room = await Room.findById(roomId)
+            if (!room) {
+                return res.sendFail('Room not found')
+            }
+
+            const info = await formatRoomInfo(room, self)
+            res.sendSuccess(info)
+        } catch (err) {
+            console.log(err)
+            res.sendFail('Fetch room info failed')
         }
     })
 
@@ -181,29 +208,6 @@ export default (app, io, { requiredAuth }) => {
     })
 
     /*
-     * Get room info
-     * Method   GET
-     * Fung Lee
-     */
-    app.get('/api/room/:roomId', requiredAuth, async (req, res) => {
-        try {
-            const { roomId } = req.params
-            const self = req.user
-
-            const room = await Room.findById(roomId)
-            if (!room) {
-                return res.sendFail('Room not found')
-            }
-
-            const info = await formatRoomInfo(room, self)
-            res.sendSuccess(info)
-        } catch (err) {
-            console.log(err)
-            res.sendFail('Fetch room info failed')
-        }
-    })
-
-    /*
      * Get room message list
      * Method   GET
      * Fung Lee
@@ -250,7 +254,7 @@ export default (app, io, { requiredAuth }) => {
                             isSelf: {
                                 $eq: ['$user._id', self._id],
                             },
-                            id: '$user._id',
+                            userId: '$user._id',
                             name: '$user.name',
                             username: '$user.username',
                         },
@@ -298,13 +302,13 @@ export default (app, io, { requiredAuth }) => {
             room.member.forEach(memberId => {
                 io.to(memberId.toString()).emit(io.event.NEW_ROOM_MESSAGE, {
                     room: {
-                        id: room._id,
+                        roomId: room._id,
                         type: room.type,
                     },
                     messageId: newMessage._id,
                     user: {
                         isSelf: newMessage.user._id.equals(memberId),
-                        id: newMessage.user._id,
+                        userId: newMessage.user._id,
                         name: newMessage.user.name,
                         username: newMessage.user.username,
                     },
@@ -331,6 +335,7 @@ export const formatRoomInfo = async (room, self) => {
             data = {
                 roomId: room._id,
                 type: room.type,
+                userId: friend._id,
                 name: friend.name,
                 username: friend.username,
                 // TODO: icon URL
