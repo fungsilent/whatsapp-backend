@@ -80,7 +80,6 @@ export default (app, io, { requiredAuth }) => {
             if (name) {
                 self.name = name
             }
-            console.log(passwordRegex)
             if (password && passwordRegex.test(password)) {
                 self.password = password
             }
