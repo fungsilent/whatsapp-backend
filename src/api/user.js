@@ -25,7 +25,7 @@ export default (app, io, { requiredAuth }) => {
                 return res.sendFail('Username has been used')
             }
 
-            if (!password.text(passwordRegex)) {
+            if (!passwordRegex.test(password)) {
                 return res.sendFail('Invalid password')
             }
 
@@ -80,7 +80,8 @@ export default (app, io, { requiredAuth }) => {
             if (name) {
                 self.name = name
             }
-            if (password && password.text(passwordRegex)) {
+            console.log(passwordRegex)
+            if (password && passwordRegex.test(password)) {
                 self.password = password
             }
             await self.save()
